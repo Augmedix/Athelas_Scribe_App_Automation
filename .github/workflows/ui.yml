@@ -1,0 +1,74 @@
+name: Go App Base Workflow
+
+on:
+  push:
+    branches:
+      - Go_APP_Base
+  pull_request:
+    branches:
+      - Go_APP_Base
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10']
+
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set Up Python
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Step 3: Cache Dependencies
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Step 4: Install Dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 5: Test Selenium Grid Connection
+      - name: Test Selenium Grid Connection
+        run: |
+          curl -v http://34.195.102.167:4444/status
+        continue-on-error: true  # Allow the job to continue for debugging purposes
+
+      # Step 6: Define Selenium Grid Environment Variable
+      - name: Set Selenium Grid Environment
+        run: echo "SELENIUM_GRID_URL=http://34.195.102.167:4444/wd/hub" >> $GITHUB_ENV
+
+      # Step 7: Run Tests
+      - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          pytest test/ui/testcases/test_home_screen.py --alluredir=TestResults/allure-reports \
+            --env=stage --enable-jenkins=yes
+
+      # Step 8: Publish Allure Reports
+      - name: Publish Allure Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results
+          path: TestResults/allure-reports
+
+      # Step 9: Upload Test Artifacts
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-artifacts
+          path: path/to/screenshots/or/logs

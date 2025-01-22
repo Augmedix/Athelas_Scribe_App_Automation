@@ -1,0 +1,15 @@
+allure-pytest
+appium-python-client  # Install  the latest version compatible with Python >=3.9
+cryptography
+jproperties
+pyjwt
+pytest
+pytz
+selenium
+webdriver-manager
+PyDrive
+sshtunnel
+pymysql
+langdetect
+html2text
+imap-tools

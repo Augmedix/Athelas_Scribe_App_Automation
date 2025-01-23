@@ -14,7 +14,8 @@ import shutil
 import sys
 import requests
 from requests.auth import HTTPBasicAuth
-
+import allure
+import pytest
 from _pytest.mark import Mark, MarkDecorator
 from allure_commons.types import AttachmentType
 from appium import webdriver as appium_driver
@@ -35,8 +36,6 @@ from test.ui.utils.google_drive_manager import GoogleDriveManager
 from test.ui.utils.lambdatest_manager import LambdaManager
 from appium.webdriver.common.appiumby import AppiumBy
 from test.ui.utils.helper import get_formatted_date_str, generate_random_string
-import allure
-import pytest
 
 
 class Unmarker:
@@ -72,7 +71,7 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
     platform_name = config.getoption('--platform-name')
     device_name = config.getoption('--device-name')
     device_os_version = config.getoption('--device-os-version')
-    alluredir = config.getoption('--alluredir') or 'TestResults/allure-reports'
+    alluredir = config.getoption('--alluredir') or 'test/ui/TestResults/allure-reports'
     #browser_version = config.getoption("browser_version")
 
 
@@ -84,12 +83,12 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         configs.add_file(AppConstant.DEV_CONFIG)
         pytest.conf = AppConstant.DEV_CONFIG
         pytest.env = env
-        pytest.bundle_id_env = env
+        pytest.bundle_id_env = 'eddev'
     elif env in ('stage', 'staging'):
         configs.add_file(AppConstant.STAGING_CONFIG)
         pytest.conf = AppConstant.STAGING_CONFIG
         pytest.env = 'staging'
-        pytest.bundle_id_env = pytest.env
+        pytest.bundle_id_env = 'edstage'
     elif env in ('prod', 'production', 'live'):
         configs.add_file(AppConstant.PRODUCTION_CONFIG)
         pytest.conf = AppConstant.PRODUCTION_CONFIG
@@ -123,7 +122,7 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         configs.set_config('url', url)
 
     # browser_version = config.getoption('--browser-version') or configs.get_config('browser_version')
-    
+
     #   Load & set environment variables
     env_var_prefix = configs.get_config('environment_variable_prefix')
 
@@ -285,7 +284,7 @@ def get_scp_driver():
         print(f"Error opening Chrome Driver: {str(e)}")
         return None
 
-@pytest.fixture(scope='class', autouse=True)
+@pytest.fixture(scope='class',autouse=True)
 def init_device(request):
     if 'no_auto' in request.keywords:
         yield
@@ -298,7 +297,7 @@ def init_device(request):
     yield _appium_driver
 
 
-""" @pytest.fixture(scope='class', autouse=True)
+# @pytest.fixture(scope='class', autouse=True)
 def init_page_objects(request, init_device):    # pylint: disable=unused-argument, too-many-locals, redefined-outer-name
     with open(AppConstant.PAGE_OBJECTS_CONFIG_FILE, 'r', encoding='utf-8') as file:
         module_info_list = file.readlines()
@@ -324,7 +323,7 @@ def init_page_objects(request, init_device):    # pylint: disable=unused-argumen
                     page_object = getattr(module, class_name)(request.cls.appium_driver)
                     setattr(current_object, object_name, page_object)
                 except AttributeError as attribute_error:
-                    print(f'Attribute \'{attribute_error.name}\' not found for {attribute_error.obj.__name__}.') """
+                    print(f'Attribute \'{attribute_error.name}\' not found for {attribute_error.obj.__name__}.')
 
 
 @pytest.fixture(scope='class', name='marker', autouse=True)
@@ -458,10 +457,13 @@ def get_requested_browser(requested_browser_name='chrome'):
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--disable-save-password-bubble")
             
-            chrome_options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
+            desired_capabilities = DesiredCapabilities.CHROME
+            desired_capabilities['loggingPrefs'] = {'browser': 'ALL'}
+            desired_capabilities.update(chrome_options.to_capabilities())
             driver = webdriver.Remote(
                 command_executor=selenium_grid,
-                options=chrome_options
+                #options=chrome_options,
+                desired_capabilities=desired_capabilities,
             )
             
         # Running locally, without Jenkins
@@ -506,7 +508,8 @@ def get_requested_browser(requested_browser_name='chrome'):
 
 
 
-def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False):   # pylint: disable=too-many-statements, too-many-locals
+def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False,
+                        url = "http://localhost:4723"):   # pylint: disable=too-many-statements, too-many-locals
     """
     Get the appropriate mobile webdriver based on the input params
     :param apk_type: apk type of the device ('RT' or 'NRT')
@@ -655,8 +658,8 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
         url = f"https://{user_name}:{access_key}@mobile-hub.lambdatest.com/wd/hub"
     else:
         # file path for local .app file
-        path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'
-        DRIVER_CONFIGS['local_caps']['app'] = path
+        # path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'
+        DRIVER_CONFIGS['local_caps']['bundleId'] = 'com.athelas.scribe.Athelas-Scribe'
         DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('udid')
 
         selected_capabilities = DRIVER_CONFIGS['local_caps']
@@ -788,7 +791,8 @@ def trigger_ehr_patient_creation_jenkins_job(provider_npi: str, first_name_lengt
                 )
 
                 patient_name = f'{first_name} {last_name}'
-                patient_locator = (AppiumBy.ACCESSIBILITY_ID, patient_name)
+                locator_name = f'{last_name}, {first_name}'
+                patient_locator = (AppiumBy.ACCESSIBILITY_ID, locator_name)
                 return patient_name, patient_locator
             else:
                 logging.error("Failed to retrieve the build number.")

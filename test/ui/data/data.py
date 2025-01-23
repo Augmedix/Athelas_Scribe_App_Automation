@@ -47,6 +47,9 @@ class Data:
         self.basic_behavior_part4_scribe = pytest.configs.get_config('basic_behavior_part4_scribe')
         self.multiple_recording_scribe = pytest.configs.get_config('multiple_recording_scribe')
 
+        self.athelas_app_scribe = pytest.configs.get_config('athelas_app_scribe')
+
+        self.athelas_scribe_pass = pytest.configs.get_config('athelas_scribe_pass')
         self.scribe_password = pytest.configs.get_config('scribe_password')
         self.test_password = pytest.configs.get_config('test_password')
 

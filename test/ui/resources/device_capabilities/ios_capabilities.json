@@ -7,7 +7,7 @@
             "deviceName": "iPhone 14",
             "udid": "will be fetched from real device properties file",
             "automationName": "XCUITest",
-            "app": "will be generated dynamically",
+            "bundleId": "will be fetched",
             "ensureWebviewsHavePages": true,
             "xcodeOrgId": "BT2F97D2JX",
             "xcodesigningId": "iPhone Developer",

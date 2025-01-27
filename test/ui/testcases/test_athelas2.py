@@ -13,15 +13,43 @@ import time
 import allure
 from test.ui.utils.common_assertions import CommonSteps
 import threading
+import pytest
 
 class TestAthelasLoginAndRecording(BaseTest,CommonSteps):
-    def setup_class(self):
+    @pytest.fixture(scope="class")
+    def drivers(self):
         self.data = Data()
-        self.athelas_page = AthelasScribeAppPage(self.appium_driver)
         CommonSteps.setup_class(self)
 
+        server1 = 'http://localhost:4723'
+        server2 = 'http://localhost:4724'
+        apk_type = 'go'
+        change_device_time = False
+        auto_accept_alert = False
+        use_simulator = True
 
-    def test_login_with_password(self):
+        drivers = {}
+
+        # Initialize both drivers
+        drivers["driver1"] = cnf.get_selected_device(apk_type=apk_type, 
+                                                    change_device_time=change_device_time, 
+                                                    auto_accept_alert=auto_accept_alert, 
+                                                    url=server1)
+        drivers["driver2"] = cnf.get_selected_device(apk_type=apk_type, 
+                                                    change_device_time=change_device_time, 
+                                                    auto_accept_alert=auto_accept_alert, 
+                                                    url=server2, 
+                                                    use_simulator=use_simulator)
+
+        yield drivers
+
+        # Cleanup
+        drivers["driver1"].quit()
+        drivers["driver2"].quit()
+
+    @pytest.mark.parametrize("driver_key", ["driver1", "driver2"])
+    def test_login_with_password(self, driver_key, drivers):
+        self.athelas_page = drivers[driver_key]
         self.athelas_page.wait_for_visibility_of(self.athelas_page.NEW_RECORDING_TITLE,10)
         with allure.step("Verify landing page elements should be properly shown after opening app"):
             self.common_assertions_for_text(self.athelas_page.SCRIBE_ON_TRIAL_MESSAGE,

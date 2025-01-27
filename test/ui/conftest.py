@@ -98,14 +98,14 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         sys.exit('Invalid option. Please provide either of the following values:'
                  ' dev, staging, production...')
 
-    if device_name == 'ios_device':
-        configs.add_file(AppConstant.IOS_REAL_DEVICE_CONFIG)
-        pytest.conf = AppConstant.IOS_REAL_DEVICE_CONFIG
-        pytest.device = device_name
-    elif device_name == "ios_simulator" or device_name == 'ios_emulator':
-        configs.add_file(AppConstant.IOS_SIMULATOR_CONFIG)
-        pytest.conf = AppConstant.IOS_SIMULATOR_CONFIG
-        pytest.device = device_name
+    # if device_name == 'ios_device':
+    configs.add_file(AppConstant.IOS_REAL_DEVICE_CONFIG)
+    pytest.conf = AppConstant.IOS_REAL_DEVICE_CONFIG
+    pytest.device = device_name
+    # elif device_name == "ios_simulator" or device_name == 'ios_emulator':
+    configs.add_file(AppConstant.IOS_SIMULATOR_CONFIG)
+    pytest.conf = AppConstant.IOS_SIMULATOR_CONFIG
+    pytest.device = device_name
 
     configs.add_file(AppConstant.SYSTEM_CONFIG)
     configs.add_file(AppConstant.TESTRAIL_CONFIG)
@@ -284,7 +284,7 @@ def get_scp_driver():
         print(f"Error opening Chrome Driver: {str(e)}")
         return None
 
-@pytest.fixture(scope='class',autouse=True)
+@pytest.fixture(scope='class', autouse=True)
 def init_device(request):
     if 'no_auto' in request.keywords:
         yield
@@ -509,7 +509,7 @@ def get_requested_browser(requested_browser_name='chrome'):
 
 
 def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False,
-                        url = "http://localhost:4723"):   # pylint: disable=too-many-statements, too-many-locals
+                        url = "http://localhost:4723", use_simulator:bool=False):   # pylint: disable=too-many-statements, too-many-locals
     """
     Get the appropriate mobile webdriver based on the input params
     :param apk_type: apk type of the device ('RT' or 'NRT')
@@ -660,10 +660,15 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
         # file path for local .app file
         # path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'
         DRIVER_CONFIGS['local_caps']['bundleId'] = 'com.athelas.scribe.Athelas-Scribe'
-        DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('udid')
+        if not use_simulator:
+            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('udid')
+            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8100
+        else:
+            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('sim_udid')
+            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8101
 
         selected_capabilities = DRIVER_CONFIGS['local_caps']
-        url = "http://localhost:4723"
+        print(selected_capabilities)
 
     # pytest.configs.set_config('app_id', DRIVER_CONFIGS['local_caps']['bundleId'])
     options = XCUITestOptions()

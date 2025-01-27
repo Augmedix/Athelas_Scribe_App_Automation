@@ -2,16 +2,15 @@
     "capabilities": {
          "local_caps": {
             "platformName": "iOS",
-            "platformVersion": "17",
             "appiumVersion": "2.5.1",
-            "deviceName": "iPhone 14",
             "udid": "will be fetched from real device properties file",
             "automationName": "XCUITest",
             "bundleId": "will be fetched",
             "ensureWebviewsHavePages": true,
             "xcodeOrgId": "BT2F97D2JX",
             "xcodesigningId": "iPhone Developer",
-            "newCommandTimeout": 240
+            "newCommandTimeout": 240,
+            "wdaLocalPort": "will be assigned"
         },
         "lambdatest_caps": {
             "lt:options": {

@@ -17,8 +17,56 @@ import threading
 class TestAthelasLoginAndRecording(BaseTest,CommonSteps):
     def setup_class(self):
         self.data = Data()
-        self.athelas_page = AthelasScribeAppPage(self.appium_driver)
         CommonSteps.setup_class(self)
+
+        server1='http://localhost:4723'
+        server2='http://localhost:4724'
+        apk_type = 'go'
+        change_device_time = False
+        auto_accept_alert = False
+        use_simulator = True
+
+        # Dictionary to store the drivers
+        self.drivers = {}
+
+        threads = []
+
+        # Start the threads to initialize both devices
+        threads.append(threading.Thread(target=self.initialize_driver,
+                                        args=(apk_type, change_device_time, auto_accept_alert, server1, "driver1")))
+        threads.append(threading.Thread(target=self.initialize_driver,
+                                        args=(apk_type, change_device_time, auto_accept_alert, server2, "driver2", use_simulator)))
+        
+        # threads.append(threading.Thread(target=cnf.get_selected_device,
+        #                                 args=(apk_type,change_device_time,auto_accept_alert,server1)))
+        # threads.append(threading.Thread(target=cnf.get_selected_device,
+        #                                 args=(apk_type,change_device_time,auto_accept_alert,server2,use_simulator)))
+        # threads.append(threading.Thread(target=start_driver, args=(device3_caps, server3)))
+
+        # # Access the initialized drivers
+        # self.appium_driver1 = drivers.get("driver1")
+        # self.appium_driver2 = drivers.get("driver2")
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        # After threads have finished, initialize pages with the drivers
+        self.athelas_page1 = AthelasScribeAppPage(self.drivers.get("driver1"))
+        self.athelas_page2 = AthelasScribeAppPage(self.drivers.get("driver2"))
+
+    def initialize_driver(self, apk_type, change_device_time, auto_accept_alert, server, driver_key, use_simulator=False):
+        # Initialize the driver based on server and other parameters
+        driver = cnf.get_selected_device(apk_type=apk_type, 
+                                         change_device_time=change_device_time, 
+                                         auto_accept_alert=auto_accept_alert, 
+                                         url=server, 
+                                         use_simulator=use_simulator)
+
+        # Store the driver in the dictionary for later use
+        self.drivers[driver_key] = driver
 
 
     def test_login_with_password(self):

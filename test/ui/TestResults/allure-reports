@@ -1,5 +1,5 @@
 Browser=Chrome
 BrowserVersion=None
-Env=Prod
+Env=Dev
 TestType=
 reportName=Augmedix TestReport

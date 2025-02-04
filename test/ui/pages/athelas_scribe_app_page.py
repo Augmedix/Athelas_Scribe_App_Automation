@@ -46,3 +46,6 @@ class AthelasScribeAppPage(BasePage):
     SCRIBE_ON_TRIAL_MESSAGE = (AppiumBy.ACCESSIBILITY_ID,"You're on Scribe Trial")
     LANDING_PAGE_SIGN_UP_BUTTON = (AppiumBy.ACCESSIBILITY_ID,'Sign Up')
     LANDING_PAGE_LOGIN_BUTTON = (AppiumBy.ACCESSIBILITY_ID,'Log In')
+    MY_SCRIBES_BUTTON = (AppiumBy.XPATH,'//XCUIElementTypeImage[@name="My Scribes"]')
+    MY_SCRIBES_HEADER = (AppiumBy.XPATH,'//XCUIElementTypeOther[@name="My Scribes"]')
+    CREATED_PATIENT_NAME = (AppiumBy.XPATH, f"//XCUIElementTypeStaticText[contains(@name, '{Data().PATIENT_NAME}')]")

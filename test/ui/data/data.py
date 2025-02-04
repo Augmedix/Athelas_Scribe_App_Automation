@@ -397,3 +397,6 @@ class Data:
     NOTE_UPLOADED_FAILED_MESSAGE = 'Note failed to upload. Please try again.'
 
     ACCOUNT_BLOCKED_ERROR_MSG = 'You’ve exceeded the maximum number of login attempts. To unlock your account, please reset your password.'
+    
+    #ATHELAS SCRIBE APP
+    PATIENT_NAME = 'Test Patient ' + helper.generate_random_string(3)

@@ -4,6 +4,7 @@ by test functions/methods.
 """
 
 import datetime
+from email.policy import default
 import glob
 import logging
 import importlib
@@ -12,6 +13,7 @@ import os
 import re
 import shutil
 import sys
+from xmlrpc.client import boolean
 import requests
 from requests.auth import HTTPBasicAuth
 import allure
@@ -72,8 +74,10 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
     device_name = config.getoption('--device-name')
     device_os_version = config.getoption('--device-os-version')
     alluredir = config.getoption('--alluredir') or 'test/ui/TestResults/allure-reports'
+    provider_email = config.getoption('--email')
+    provider_password = config.getoption('--password')
+    credentials_provided = config.getoption('--provide-credentials')
     #browser_version = config.getoption("browser_version")
-
 
     set_skipped_test(config)
 
@@ -118,8 +122,25 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
     pytest.marker = marker
     configs.load_configs()
 
+    """Prompt for email and password before tests start and store them in pytest variables."""
+    if credentials_provided == 'yes':
+        email = input("Enter your email: ")
+        password = input("Enter your password: ")
+        credentials = {"email": email, "password": password}
+        credentials_str = json.dumps(credentials)
+        
+        configs.set_config('athelas_credentials', credentials_str)
+        print("Credentials stored successfully!")
+
     if url is not None:
         configs.set_config('url', url)
+
+    if provider_email is not None:
+        configs.set_config('athelas_email', provider_email)
+        if provider_password is not None:
+            configs.set_config('athelas_password', provider_password)
+        else:
+            print('\n=====Provide password for the entered provider email!=====\n')
 
     # browser_version = config.getoption('--browser-version') or configs.get_config('browser_version')
 
@@ -157,6 +178,10 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
     pytest.admin_url = pytest.configs.get_config('admin_base_url')
     pytest.unmark = Unmarker()
     pytest.browser_version = config.getoption("browser_version")
+    pytest.provider_email = configs.get_config('athelas_email')
+    pytest.provider_password = configs.get_config('athelas_password')
+    creds_config_value = configs.get_config('athelas_credentials')
+    pytest.login = json.loads(creds_config_value) if creds_config_value else None
 
 
 def pytest_collection_modifyitems(config, items):   # pylint: disable=too-many-locals
@@ -419,6 +444,9 @@ def pytest_addoption(parser):
                      help='Desired apk version to be downloaded')
     parser.addoption('--device_version', action='store', default='', help='Desired apk version to be downloaded')
     parser.addoption('--default-dataset', action='store', default='yes', help='Select user dataset to test with.')
+    parser.addoption('--email', action='store', help='Provider email for logging in. It is recommended to provide the value inside quotes')
+    parser.addoption('--password', action='store', help='Provider password for logging in. It is recommended to provide the value inside quotes')
+    parser.addoption('--provide-credentials', action='store', default='no', help='Enable script to take input for credentials. Default is kept as not taking input.')
 
 
 def get_next_ipa_folder_from_gd(env_dict, value_iterator, key_iterator, gdm):

@@ -23,12 +23,12 @@ class BaseTest:
         """
         yield  # This will pause the execution here and allow cleanup code to be executed afterward
 
-        try:
-            self.home_screen_page.logout_from_app()
-        except Exception as e:
-            print(f"An error occurred during app logout: {e}")
-        finally:
-            self.appium_driver.quit()
+        # try:
+        #     self.home_screen_page.logout_from_app()
+        # except Exception as e:
+        #     print(f"An error occurred during app logout: {e}")
+        # finally:
+        self.appium_driver.quit()
 
         if self.scp_driver:
             print('\nBrowser driver available, quiting')

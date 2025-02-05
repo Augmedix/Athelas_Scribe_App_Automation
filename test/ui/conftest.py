@@ -38,6 +38,8 @@ from test.ui.utils.google_drive_manager import GoogleDriveManager
 from test.ui.utils.lambdatest_manager import LambdaManager
 from appium.webdriver.common.appiumby import AppiumBy
 from test.ui.utils.helper import get_formatted_date_str, generate_random_string
+from selenium.webdriver.remote.remote_connection import ClientConfig
+from appium.webdriver.appium_connection import AppiumConnection
 
 
 class Unmarker:
@@ -701,7 +703,9 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
     # pytest.configs.set_config('app_id', DRIVER_CONFIGS['local_caps']['bundleId'])
     options = XCUITestOptions()
     options.load_capabilities(selected_capabilities)
-    driver = appium_driver.Remote(command_executor=url, options=options)
+    client_config = ClientConfig(url)
+    command_executor = AppiumConnection(client_config=client_config)
+    driver = appium_driver.Remote(command_executor=command_executor, options=options)
     return driver
 
 

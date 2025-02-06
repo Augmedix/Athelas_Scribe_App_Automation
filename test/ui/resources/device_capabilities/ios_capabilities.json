@@ -1,6 +1,6 @@
 {
     "capabilities": {
-         "local_caps": {
+        "local_caps": {
             "platformName": "iOS",
             "appiumVersion": "2.5.1",
             "udid": "will be fetched from real device properties file",
@@ -12,32 +12,31 @@
             "newCommandTimeout": 240,
             "wdaLocalPort": "will be assigned"
         },
-        "lambdatest_caps": {
-            "lt:options": {
-                  "app": "will be generated dynamically",
-                  "autoGrantPermissions": false,
-                  "console": true,
-                  "devicelog": true,
-                  "idleTimeout": 1800,
-                  "build": "AX_Test",
-                  "name": "Augmedix GO ED",
-                  "isRealMobile": true,
-                  "paltformName": "iOS",
-                  "deviceName": "iPhone 15",
-                  "platformVersion": 17,
-                  "queueTimeout": 900,
-                  "visual": true,
-                  "newCommandTimeout": 240,
-                  "w3c": true,
-                  "autoAcceptAlerts" : false,
-                  "network": true,
-                  "timezone": "America/Los_Angeles",
-                  "lambda:keepAlive": true,
-                  "smartWait": true,
-                  "disableScreenshots": true,
-                  "locale": "en_US",
-                  "language": "en"
-            }
+        "browserstack_caps": {
+            "bstack:options": {
+                "userName": "YOUR_BROWSERSTACK_USERNAME",
+                "accessKey": "YOUR_BROWSERSTACK_ACCESS_KEY",
+                "projectName": "Augmedix GO ED",
+                "buildName": "AX_Test",
+                "sessionName": "iOS Automation",
+                "appiumVersion": "2.5.1",
+                "deviceName": "iPhone 15",
+                "platformName": "iOS",
+                "platformVersion": "17",
+                "idleTimeout": 1800,
+                "newCommandTimeout": 240,
+                "networkLogs": true,
+                "deviceLogs": true,
+                "consoleLogs": "info",
+                "debug": true,
+                "local": false
+            },
+            "app": "bs://b7236c755d04dd582999cf090971e1453650e8b2",
+            "autoAcceptAlerts": false,
+            "autoGrantPermissions": false,
+            "language": "en",
+            "locale": "en_US",
+            "timezone": "America/Los_Angeles"
         }
     }
 }

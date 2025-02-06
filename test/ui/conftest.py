@@ -545,7 +545,7 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
     """
     with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
         DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
-        LAMBDATEST_CONFIGS = DRIVER_CONFIGS['lambdatest_caps']['lt:options']
+        LAMBDATEST_CONFIGS = DRIVER_CONFIGS['browserstack_caps']['bstack:options']
         if auto_accept_alert:
             LAMBDATEST_CONFIGS['autoAcceptAlerts'] = True
 
@@ -681,9 +681,9 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
         data_props.update_config(expected_app_id_key, app_id, AppConstant.LAMBDATEST_CONFIG)
 
         selected_capabilities = LAMBDATEST_CONFIGS
-        user_name = pytest.configs.get_config('lambdatest_username')
-        access_key = pytest.configs.get_config('lambdatest_access_key')
-        url = f"https://{user_name}:{access_key}@mobile-hub.lambdatest.com/wd/hub"
+        user_name = pytest.configs.get_config('BROWSERSTACK_USERNAME')
+        access_key = pytest.configs.get_config('BROWSERSTACK_ACCESS_KEY')
+        url = f"https://{user_name}:{access_key}@hub-cloud.browserstack.com/wd/hub"
     else:
         # file path for local .app file
         # path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'

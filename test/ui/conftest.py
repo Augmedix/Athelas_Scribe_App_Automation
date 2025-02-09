@@ -538,175 +538,94 @@ def get_requested_browser(requested_browser_name='chrome'):
 
 
 
-def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False,
-                        url = "http://localhost:4723", use_simulator:bool=False):   # pylint: disable=too-many-statements, too-many-locals
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+DEFAULT_TIMEOUT = 60
+
+def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False, 
+                        url="http://localhost:4723", use_simulator: bool = False):
     """
-    Get the appropriate mobile webdriver based on the input params
-    :param apk_type: apk type of the device ('RT' or 'NRT')
-    :return: mobile webdriver instance
+    Get the appropriate mobile webdriver based on the input params.
     """
-    with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
-        DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
-        LAMBDATEST_CONFIGS = DRIVER_CONFIGS['lambdatest_caps']['lt:options']
+    try:
+        is_parallel = pytest.config.getoption("--parallel-iphones", default=False)
+        selected_devices = pytest.config.getoption("--device-list", default="iPhone 13").split(",")
+
+        with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
+            DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
+            LAMBDATEST_CONFIGS = DRIVER_CONFIGS['lambdatest_caps']['lt:options']
+        
         if auto_accept_alert:
             LAMBDATEST_CONFIGS['autoAcceptAlerts'] = True
 
-        if change_device_time:
-            LAMBDATEST_CONFIGS['timezone'] = 'UTC+10:00'
+        LAMBDATEST_CONFIGS['timezone'] = 'UTC+10:00' if change_device_time else 'UTC-04:00'
 
-        else:
-            LAMBDATEST_CONFIGS['timezone'] = 'UTC-04:00'
+        expected_app_id_key = f'apk_id_{apk_type}_{pytest.env}'
+        app_id = pytest.configs.get_config(expected_app_id_key)
 
-    expected_app_id_key = f'apk_id_{apk_type}_{pytest.env}'
-    app_id = pytest.configs.get_config(expected_app_id_key)
+        if pytest.enable_jenkins == 'yes' or pytest.run_locally == 'yes':
+            gdm = GoogleDriveManager()
+            lambdatest = LambdaManager()
+            expected_apk_name = f'GO_Automation_{apk_type}_{pytest.env}_{pytest.apk_version}'
 
-    if pytest.enable_jenkins == 'yes' or pytest.run_locally == 'yes':
+            lamdatest_app_id = f'lt://{lambdatest.get_apk_info(expected_apk_name)}'
+            if app_id != lamdatest_app_id:
+                app_id = lamdatest_app_id
+            logging.info(f'Using app_id: {app_id}')
 
-        gdm = GoogleDriveManager()
-        lambdatest = LambdaManager()
+            apk_modified_date_time_str_in_gd = gdm.get_latest_zip_file_modified_date(AppConstant.APK_FOLDER, pytest.file_env)
+            apk_modified_date_time_str_in_lambdatest = lambdatest.get_apk_info(expected_apk_name, 'updated_at')
 
-        if pytest.env == 'staging':
-            pytest.file_env = 'Stag'
-        elif pytest.env == 'dev':
-            pytest.file_env = 'Dev'
-        elif pytest.env == 'prod':
-            pytest.file_env = 'Prod'
+            if apk_modified_date_time_str_in_lambdatest:
+                date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
+                apk_gd_time = datetime.datetime.strptime(apk_modified_date_time_str_in_gd, date_format)
+                apk_lt_time = datetime.datetime.strptime(apk_modified_date_time_str_in_lambdatest, date_format)
 
-        if pytest.apk_version == '':
-            all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_{apk_type}'))
+                if apk_gd_time > apk_lt_time:
+                    logging.info('Uploading the latest IPA file...')
+                    os.makedirs(AppConstant.APK_FOLDER, exist_ok=True)
+                    os.makedirs(f"{AppConstant.APK_FOLDER}/extracted", exist_ok=True)
+                    gdm.download_and_extract_zip_file(AppConstant.APK_FOLDER, f"{AppConstant.APK_FOLDER}/extracted")
 
-            value_iterator = iter(all_folder_under_root.values())
-            key_iterator = iter(all_folder_under_root.keys())
-            version_folder_id = next(value_iterator)   # Latest version in GD
-            apk_version_in_gd = next(key_iterator)
-            print(version_folder_id, apk_version_in_gd)
-
-            env_dict = gdm.get_list_of_files_by_id(version_folder_id)
-            if len(env_dict) == 0:
-                version_folder_id, apk_version_in_gd, env_dict = get_next_ipa_folder_from_gd(env_dict,
-                                                                                         value_iterator,
-                                                                                         key_iterator,gdm)
-                print(f"Latest version with build present in the folder is being used: {version_folder_id} : {apk_version_in_gd}")
-
-            print(env_dict)
-
-            file_id = gdm.get_latest_zip_file_id(version_folder_id, pytest.file_env)
-
-            print(file_id)
-        else:
-            try:
-                all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_{apk_type}'))
-                # print(all_folder_under_root)
-                version_folder_id = all_folder_under_root[pytest.apk_version]
-            except KeyError:
-                all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_old_{apk_type}'))
-                # print(all_folder_under_root)
-                version_folder_id = all_folder_under_root[pytest.apk_version]
-            apk_version_in_gd = pytest.apk_version
-            print(version_folder_id, apk_version_in_gd)
-
-            env_dict = gdm.get_list_of_files_by_id(version_folder_id)
-            print(env_dict)
-            file_id = gdm.get_latest_zip_file_id(version_folder_id, pytest.file_env)
-            print(file_id)
-
-        expected_apk_name = f'GO_Automation_{apk_type}_{pytest.env}_{apk_version_in_gd}'
-        destination_folder = f'{AppConstant.APK_FOLDER}'
-        apk_download_destination_folder = f'{AppConstant.APK_FOLDER}/{apk_type}'
-        extracted_folder_path = os.path.join(destination_folder, 'extracted')
-
-        lamdatest_app_id = f'lt://{lambdatest.get_apk_info(expected_apk_name)}'
-        if not app_id == lamdatest_app_id:
-            app_id = lamdatest_app_id
-
-        print(f'app_id = {app_id}')
-
-        apk_modified_date_time_str_in_gd = gdm.get_latest_zip_file_modified_date(version_folder_id,pytest.file_env)
-        apk_modified_date_time_str_in_lambdatest = lambdatest.get_apk_info(expected_apk_name, 'updated_at')
-
-        if apk_modified_date_time_str_in_lambdatest:
-
-            date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
-            apk_modified_date_time_in_gd = datetime.datetime.strptime(apk_modified_date_time_str_in_gd, date_format)
-            apk_modified_date_time_in_lambdatest = datetime.datetime.strptime(apk_modified_date_time_str_in_lambdatest, date_format)
-
-            if apk_modified_date_time_in_gd > apk_modified_date_time_in_lambdatest:
-                print('\nLambdatest has older apk. Uploading latest apk from Google Drive...\n')
-                try:
-                    os.makedirs(destination_folder, exist_ok=True)
-                    os.makedirs(extracted_folder_path, exist_ok=True)
-                    gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                finally:
-                    pass
-                    # shutil.rmtree(extracted_folder_path, ignore_errors=True)
-
-                ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted')
-                ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
-                app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
-                os.remove(ipa_file_path)
-            else:
-                print('\nLambdatest has the latest apk. Continuing with existing one...\n')
-                print('\nChecking for validity of the latest saved APP_ID.\n')
-                if not lambdatest.check_app_id_exist(app_id):
-                    try:
-                        os.makedirs(destination_folder, exist_ok=True)
-                        os.makedirs(extracted_folder_path, exist_ok=True)
-                        gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                    finally:
-                        pass
-                        # shutil.rmtree(extracted_folder_path, ignore_errors=True)
-
-                    ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted/')
-                    ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
+                    ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f"{AppConstant.APK_FOLDER}/extracted")
+                    ipa_file_path = f"{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}"
                     app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
                     os.remove(ipa_file_path)
-        else:
-            try:
-                os.makedirs(destination_folder, exist_ok=True)
-                os.makedirs(extracted_folder_path, exist_ok=True)
-                gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                gdm.download_ipa_file(extracted_folder_path, apk_download_destination_folder, f'{pytest.env}.ipa')
-            finally:
-                pass
-                # shutil.rmtree(extracted_folder_path, ignore_errors=True)
 
-            ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted')
-            ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
-            app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
-            os.remove(ipa_file_path)
+            LAMBDATEST_CONFIGS['app'] = app_id
+            pytest.configs.update_config(expected_app_id_key, app_id, AppConstant.LAMBDATEST_CONFIG)
 
-        LAMBDATEST_CONFIGS['app'] = app_id
-        print(LAMBDATEST_CONFIGS)
-        data_props = ConfigParser()
-        data_props.add_file(AppConstant.LAMBDATEST_CONFIG)
-        data_props.load_configs()
-        data_props.update_config(expected_app_id_key, app_id, AppConstant.LAMBDATEST_CONFIG)
+        LAMBDATEST_CONFIGS['device'] = selected_devices if is_parallel else selected_devices[0]
+        LAMBDATEST_CONFIGS['platformName'] = "iOS"
 
-        selected_capabilities = LAMBDATEST_CONFIGS
-        user_name = pytest.configs.get_config('lambdatest_username')
-        access_key = pytest.configs.get_config('lambdatest_access_key')
-        url = f"https://{user_name}:{access_key}@mobile-hub.lambdatest.com/wd/hub"
-    else:
-        # file path for local .app file
-        # path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'
-        DRIVER_CONFIGS['local_caps']['bundleId'] = 'com.athelas.scribe.Athelas-Scribe'
-        if not use_simulator:
-            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('udid')
-            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8100
-        else:
-            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('sim_udid')
-            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8101
+        logging.info(f"Running on {'multiple devices' if is_parallel else 'single device'}: {LAMBDATEST_CONFIGS['device']}")
 
-        selected_capabilities = DRIVER_CONFIGS['local_caps']
-        print(selected_capabilities)
+        options = XCUITestOptions()
+        options.load_capabilities(LAMBDATEST_CONFIGS)
+        driver = appium_driver.Remote(command_executor=AppiumConnection(remote_server_addr=url), options=options)
 
-    # pytest.configs.set_config('app_id', DRIVER_CONFIGS['local_caps']['bundleId'])
-    options = XCUITestOptions()
-    options.load_capabilities(selected_capabilities)
-    client_config = ClientConfig(url)
-    command_executor = AppiumConnection(client_config=client_config)
-    driver = appium_driver.Remote(command_executor=command_executor, options=options)
-    return driver
+        # Attach LambdaTest logs to reports
+        session_id = driver.session_id
+        lambdatest_log_url = f"https://automation.lambdatest.com/logs/{session_id}"
+        logging.info(f"LambdaTest logs available at: {lambdatest_log_url}")
+        pytest.lambdatest_log_url = lambdatest_log_url
+        
+        return driver
+
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.error(f"Error loading iOS capabilities or configuration: {e}")
+        return None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Network error while interacting with LambdaTest: {e}")
+        return None
+    except Exception as e:
+        logging.error(f"Unexpected error in get_selected_device: {e}")
+        return None
+    finally:
+        if 'driver' in locals():
+            driver.quit()
+            logging.info("Appium session closed successfully.")
+
 
 
 def get_dict_from_loaded_config(testcases_config=None):

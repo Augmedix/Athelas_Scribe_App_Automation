@@ -538,6 +538,19 @@ def get_requested_browser(requested_browser_name='chrome'):
 
 
 
+import logging
+import pytest
+import requests
+import datetime
+import json
+import os
+from appium import webdriver as appium_driver
+from appium.options.ios import XCUITestOptions
+from appium.webdriver.appium_connection import AppiumConnection
+from test.ui.utils.app_constants import AppConstant
+from test.ui.utils.google_drive_manager import GoogleDriveManager
+from test.ui.utils.lambdatest_manager import LambdaManager
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 DEFAULT_TIMEOUT = 60
@@ -550,6 +563,9 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
     try:
         is_parallel = pytest.config.getoption("--parallel-iphones", default=False)
         selected_devices = pytest.config.getoption("--device-list", default="iPhone 13").split(",")
+        if not selected_devices:
+            logging.error("No devices specified. Falling back to default device: iPhone 13")
+            selected_devices = ["iPhone 13"]
 
         with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
             DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
@@ -606,9 +622,12 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
 
         # Attach LambdaTest logs to reports
         session_id = driver.session_id
-        lambdatest_log_url = f"https://automation.lambdatest.com/logs/{session_id}"
-        logging.info(f"LambdaTest logs available at: {lambdatest_log_url}")
-        pytest.lambdatest_log_url = lambdatest_log_url
+        if session_id:
+            lambdatest_log_url = f"https://automation.lambdatest.com/logs/{session_id}"
+            logging.info(f"LambdaTest logs available at: {lambdatest_log_url}")
+            pytest.lambdatest_log_url = lambdatest_log_url
+        else:
+            logging.error("Session ID is None. LambdaTest log URL cannot be generated.")
         
         return driver
 
@@ -618,13 +637,17 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
     except requests.exceptions.RequestException as e:
         logging.error(f"Network error while interacting with LambdaTest: {e}")
         return None
+    except RuntimeError as e:
+        logging.error(f"Runtime error encountered: {e}")
+        return None
     except Exception as e:
         logging.error(f"Unexpected error in get_selected_device: {e}")
         return None
     finally:
-        if 'driver' in locals():
+        if 'driver' in locals() and driver is not None:
             driver.quit()
             logging.info("Appium session closed successfully.")
+
 
 
 

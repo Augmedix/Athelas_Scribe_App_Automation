@@ -42,6 +42,10 @@ from selenium.webdriver.remote.remote_connection import ClientConfig
 from appium.webdriver.appium_connection import AppiumConnection
 
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+DEFAULT_TIMEOUT = 60
+
 class Unmarker:
     """
     Return MarkDecorator object.
@@ -535,25 +539,6 @@ def get_requested_browser(requested_browser_name='chrome'):
     return driver
 
 
-
-
-
-import logging
-import pytest
-import requests
-import datetime
-import json
-import os
-from appium import webdriver as appium_driver
-from appium.options.ios import XCUITestOptions
-from appium.webdriver.appium_connection import AppiumConnection
-from test.ui.utils.app_constants import AppConstant
-from test.ui.utils.google_drive_manager import GoogleDriveManager
-from test.ui.utils.lambdatest_manager import LambdaManager
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-DEFAULT_TIMEOUT = 60
 
 def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False, 
                         url="http://localhost:4723", use_simulator: bool = False):

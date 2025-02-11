@@ -565,7 +565,7 @@ def pytest_addoption(parser):
     parser.addoption('--email', action='store', help='Provider email for logging in. It is recommended to provide the value inside quotes')
     parser.addoption('--password', action='store', help='Provider password for logging in. It is recommended to provide the value inside quotes')
     parser.addoption('--provide-credentials', action='store', default='no', help='Enable script to take input for credentials. Default is kept as not taking input.')
-    parser.addoption('--parallel-iphones', action='store_true', default=False, help='Run tests on multiple iPhones in parallel.')
+    parser.addoption('--parallel-devices', action='store_true', default=False, help='Run tests on multiple devices in parallel.')
     parser.addoption('--device-list', action='store', default="iPhone 13", help='Comma-separated list of devices for parallel execution.')
 
 

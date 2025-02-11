@@ -1,5 +1,4 @@
 import hudson.model.Result
-
 import static groovy.io.FileType.FILES  //isort: skip
 
 properties(
@@ -625,33 +624,33 @@ properties(
               sh """
                 set +x
                 . ~/.axgo_profile
-                rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${ENV} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED_TCS} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --device-name="${params.DEVICE_NAME}" --apk-version=${params.APK_VERSION} --device-os-version=${params.DEVICE_OS_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
+                rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${ENV} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED_TCS} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --device-name="${params.DEVICE_NAME}" --apk-version=${params.APK_VERSION} --device-os-version=${params.DEVICE_OS_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA --parallel-devices --device-list="${params.DEVICE_LIST}"
                 set -x
               """
-            }else{
+            } else {
                 if(jobUserId == 'timer'){
-                  sh """
-                    set +x
-                    . ~/.axgo_profile
-                    rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=staging ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --device-name="${params.DEVICE_NAME}" --apk-version=${params.APK_VERSION} --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
-                    set -x
-                    """
-                }else{
-                  if(params.TEST_URL == ''){
                     sh """
-                    set +x
-                    . ~/.axgo_profile
-                    rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${params.ENV.toLowerCase()} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --apk-version=${params.APK_VERSION} --device-name="${params.DEVICE_NAME}" --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
-                    set -x
+                        set +x
+                        . ~/.axgo_profile
+                        rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=staging ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --device-name="${params.DEVICE_NAME}" --apk-version=${params.APK_VERSION} --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA --parallel-devices --device-list="${params.DEVICE_LIST}"
+                        set -x
                     """
-                  }else{
-                    sh """
-                    set +x
-                    . ~/.axgo_profile
-                    rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${params.ENV.toLowerCase()} --url=${params.TEST_URL} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --apk-version=${params.APK_VERSION} --device-name="${params.DEVICE_NAME}" --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
-                    set -x
-                    """
-                  }
+                } else {
+                    if(params.TEST_URL == ''){
+                        sh """
+                            set +x
+                            . ~/.axgo_profile
+                            rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${params.ENV.toLowerCase()} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --apk-version=${params.APK_VERSION} --device-name="${params.DEVICE_NAME}" --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA --parallel-devices --device-list="${params.DEVICE_LIST}"
+                            set -x
+                        """
+                    } else {
+                        sh """
+                            set +x
+                            . ~/.axgo_profile
+                            rm -rf ${WORKSPACE}/allure-results ${WORKSPACE}/testResults/ && python3 -m pytest --env=${params.ENV.toLowerCase()} --url=${params.TEST_URL} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --apk-version=${params.APK_VERSION} --device-name="${params.DEVICE_NAME}" --device-os-version=${params.DEVICE_OS_VERSION} --device_version=${params.DEVICE_VERSION} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA --parallel-devices --device-list="${params.DEVICE_LIST}"
+                            set -x
+                        """
+                    }
                 }
             }
       }

@@ -36,4 +36,5 @@ class AppConstant:
     TEST_STEPS_FOLDER = join(RESOURCE_FOLDER, 'test_steps')
     REQUEST_DATA_FOLDER = join(RESOURCE_FOLDER, 'request_data')
     JENKINS_CONFIG = join(RESOURCE_FOLDER, 'jenkins.properties')
+    PARALLEL_DEVICE_CAPABILITIES_CONFIG = join(RESOURCE_FOLDER, 'parallel_devices_capabilities.properties')
 

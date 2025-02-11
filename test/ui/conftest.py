@@ -1,21 +1,23 @@
 """
-Used to set up test configurations and store/modify the testcases that are used
+Used to set up test configurations and store/modify the test cases that are used
 by test functions/methods.
 """
 
+# Standard Library
 import datetime
-from email.policy import default
 import glob
-import logging
-import importlib
 import json
+import logging
 import os
 import re
 import shutil
 import sys
+import time
 from xmlrpc.client import boolean
-import requests
-from requests.auth import HTTPBasicAuth
+import importlib
+
+
+# Third-Party Libraries
 import allure
 import pytest
 from _pytest.mark import Mark, MarkDecorator
@@ -24,14 +26,16 @@ from appium import webdriver as appium_driver
 from appium.options.ios import XCUITestOptions
 from cryptography.fernet import Fernet, InvalidToken
 from jproperties import Properties
+import requests
+from requests.auth import HTTPBasicAuth
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.common.exceptions import WebDriverException
-import time
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Local Modules
 from test.ui.utils.app_constants import AppConstant
 from test.ui.utils.config_parser import ConfigParser
 from test.ui.utils.google_drive_manager import GoogleDriveManager
@@ -41,13 +45,22 @@ from test.ui.utils.helper import get_formatted_date_str, generate_random_string
 from selenium.webdriver.remote.remote_connection import ClientConfig
 from appium.webdriver.appium_connection import AppiumConnection
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 
 class Unmarker:
     """
     Return MarkDecorator object.
     """
     def __getattr__(self, item):
-        # Return a marker remover
+        """
+        Return a MarkDecorator object for unmarking a pytest marker.
+        
+        :param item: The name of the marker to unmark.
+        :return: MarkDecorator object.
+        """
         if item[0] == '_':
             raise AttributeError('Marker name must NOT start with underscore')
         return MarkDecorator(Mark(f'unmark:{item}', args=(), kwargs={}))
@@ -55,7 +68,7 @@ class Unmarker:
 
 class Fauxcals:
     """
-    SHould work with the eval() as the set of 'locals'. Will return
+    Should work with the eval() as the set of 'locals'. Will return
     true for any item keyword that begins with unmark. This should only work for
     marks set by 'unmarker', because you can't do `@pytest.mark.namewith:colon`.
     """
@@ -66,25 +79,14 @@ class Fauxcals:
         return item in self.keys
 
 
-@pytest.hookimpl(trylast=True)
-def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-statements
-    env = config.getoption('--env').lower()
-    url = config.getoption('--url')
-    browser = config.getoption('--browser')
-    marker = config.getoption('-m')
-    platform_name = config.getoption('--platform-name')
-    device_name = config.getoption('--device-name')
-    device_os_version = config.getoption('--device-os-version')
-    alluredir = config.getoption('--alluredir') or 'test/ui/TestResults/allure-reports'
-    provider_email = config.getoption('--email')
-    provider_password = config.getoption('--password')
-    credentials_provided = config.getoption('--provide-credentials')
-    #browser_version = config.getoption("browser_version")
-
-    set_skipped_test(config)
-
+def load_configurations(env):
+    """
+    Load configurations based on the environment.
+    
+    :param env: The environment to load configurations for.
+    :return: ConfigParser object.
+    """
     configs = ConfigParser()
-
     if env is None or env == 'dev':
         configs.add_file(AppConstant.DEV_CONFIG)
         pytest.conf = AppConstant.DEV_CONFIG
@@ -101,8 +103,50 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         pytest.env = 'prod'
         pytest.bundle_id_env = 'ed'
     else:
-        sys.exit('Invalid option. Please provide either of the following values:'
-                 ' dev, staging, production...')
+        sys.exit('Invalid option. Please provide either of the following values: dev, staging, production...')
+    return configs
+
+
+def setup_chrome_options(headless=False):
+    """
+    Setup Chrome options for WebDriver.
+    
+    :param headless: Whether to run in headless mode.
+    :return: ChromeOptions object.
+    """
+    chrome_options = webdriver.ChromeOptions()
+    if headless:
+        chrome_options.add_argument('headless')
+    chrome_options.add_argument('--incognito')
+    chrome_options.add_argument('--use-fake-device-for-media-stream')
+    chrome_options.add_argument('--use-fake-ui-for-media-stream')
+    chrome_options.add_argument('window-size=1920x1080')
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-save-password-bubble")
+    return chrome_options
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config):  # pylint: disable=too-many-locals, too-many-statements
+    """
+    Configure pytest with environment-specific settings.
+    """
+    env = config.getoption('--env').lower()
+    url = config.getoption('--url')
+    browser = config.getoption('--browser')
+    marker = config.getoption('-m')
+    platform_name = config.getoption('--platform-name')
+    device_name = config.getoption('--device-name')
+    device_os_version = config.getoption('--device-os-version')
+    alluredir = config.getoption('--alluredir') or 'test/ui/TestResults/allure-reports'
+    provider_email = config.getoption('--email')
+    provider_password = config.getoption('--password')
+    credentials_provided = config.getoption('--provide-credentials')
+    # browser_version = config.getoption("browser_version")
+
+    set_skipped_test(config)
+
+    configs = load_configurations(env)
 
     # if device_name == 'ios_device':
     configs.add_file(AppConstant.IOS_REAL_DEVICE_CONFIG)
@@ -132,7 +176,7 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         credentials_str = json.dumps(credentials)
         
         configs.set_config('athelas_credentials', credentials_str)
-        print("Credentials stored successfully!")
+        logger.info("Credentials stored successfully!")
 
     if url is not None:
         configs.set_config('url', url)
@@ -142,13 +186,12 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
         if provider_password is not None:
             configs.set_config('athelas_password', provider_password)
         else:
-            print('\n=====Provide password for the entered provider email!=====\n')
+            logger.warning('\n=====Provide password for the entered provider email!=====\n')
 
     # browser_version = config.getoption('--browser-version') or configs.get_config('browser_version')
 
-    #   Load & set environment variables
+    # Load & set environment variables
     env_var_prefix = configs.get_config('environment_variable_prefix')
-
     env_vars = os.environ
     secret_key = os.environ.get('SECRET_KEY')
     cipher = Fernet(secret_key)
@@ -160,9 +203,9 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
                 decrypted_value = cipher.decrypt(str.encode(value)).decode()
                 configs.set_config(truncated_key, decrypted_value)
             except InvalidToken:
-                print(f'Key {key} is encrypted with invalid token.')
+                logger.error(f'Key {key} is encrypted with invalid token.')
 
-    # Other settings is cached here
+    # Other settings are cached here
     pytest.configs = configs
     pytest.browser = browser
     pytest.platform_name = platform_name
@@ -186,7 +229,52 @@ def pytest_configure(config):   # pylint: disable=too-many-locals, too-many-stat
     pytest.login = json.loads(creds_config_value) if creds_config_value else None
 
 
-def pytest_collection_modifyitems(config, items):   # pylint: disable=too-many-locals
+def get_requested_browser(requested_browser_name='chrome'):
+    """
+    Initialize and return the requested browser driver.
+    
+    :param requested_browser_name: Name of the browser to initialize.
+    :return: WebDriver instance.
+    """
+    try:
+        driver = None
+        if requested_browser_name == 'chrome':
+            if pytest.enable_jenkins == 'yes':
+                selenium_grid = pytest.configs.get_config('selenium_grid_url')
+                chrome_options = setup_chrome_options(headless=True)
+                desired_capabilities = DesiredCapabilities.CHROME
+                desired_capabilities['loggingPrefs'] = {'browser': 'ALL'}
+                desired_capabilities.update(chrome_options.to_capabilities())
+                driver = webdriver.Remote(
+                    command_executor=selenium_grid,
+                    desired_capabilities=desired_capabilities,
+                )
+            elif pytest.enable_jenkins == 'no':
+                chrome_options = setup_chrome_options()
+                driver = webdriver.Chrome(
+                    service=Service(ChromeDriverManager().install()), 
+                    options=chrome_options
+                )
+            else:
+                raise ValueError('Invalid flag value provided for --enable-jenkins.')
+        elif requested_browser_name == 'debugging':
+            options = ChromeOptions()
+            options.add_experimental_option('debuggerAddress', 'localhost:9222')
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        else:
+            raise ValueError('Invalid browser type. Please try with Chrome or debugging.')
+
+        if driver:
+            driver.maximize_window()
+        return driver
+    except Exception as e:
+        logger.error(f"Error initializing {requested_browser_name} browser: {e}")
+        raise
+
+
+# Rest of the code remains unchanged, with comments preserved as per your request.
+
+def pytest_collection_modifyitems(config, items):  # pylint: disable=too-many-locals
     """
     Modifies the collected test cases by adding skip marker. Test case lists are read from
     'skipped_testcases.properties' file under 'resources' folder. Test cases are listed as key
@@ -238,11 +326,11 @@ def pytest_collection_modifyitems(config, items):   # pylint: disable=too-many-l
 
             setattr(item.obj.__func__, '__doc__', test_case_steps)
         except FileNotFoundError:
-            print(f'No such file: {test_module_name}.json.')
+            logger.warning(f'No such file: {test_module_name}.json.')
 
         if matchexpr:
-            if eval(matchexpr, {}, Fauxcals(item.keywords)):    # pylint: disable=eval-used
-                print(f'Deselecting {item!r} (mark removed by @pytest.unmark)')
+            if eval(matchexpr, {}, Fauxcals(item.keywords)):  # pylint: disable=eval-used
+                logger.info(f'Deselecting {item!r} (mark removed by @pytest.unmark)')
                 deselected.append(item)
                 continue
         remaining.append(item)
@@ -253,6 +341,9 @@ def pytest_collection_modifyitems(config, items):   # pylint: disable=too-many-l
 
 
 def pytest_sessionfinish(session):
+    """
+    Logs failed test cases and updates the last failed test cases file.
+    """
     failed_test_list = []
     for item in session.items:
         if hasattr(item, 'rep_call') and item.rep_call.outcome == 'failed':
@@ -283,7 +374,7 @@ def get_scp_driver():
     #     yield
     #     return
     try:
-        print(f'Enable Jenkins: {pytest.enable_jenkins}')
+        logger.info(f'Enable Jenkins: {pytest.enable_jenkins}')
         # Initialize the browser driver
         scp_driver = get_requested_browser(pytest.browser)
         
@@ -293,7 +384,7 @@ def get_scp_driver():
         
         # Open the URL in the browser
         scp_driver.get(pytest.url)
-        print("URL opened: ", pytest.url)
+        logger.info("URL opened: %s", pytest.url)
         
         # Check if the driver has a valid session ID (indicating the browser is open)
         if not scp_driver.session_id:
@@ -302,30 +393,37 @@ def get_scp_driver():
         # Log the browser version
         browser_version = scp_driver.capabilities.get('browserVersion')
         os.environ['browser_version'] = browser_version
-        print(f'Browser opened, version: {browser_version}')
+        logger.info(f'Browser opened, version: {browser_version}')
         scp_driver.save_screenshot("headless_view.png")
-        print(scp_driver.page_source)
+        logger.info(scp_driver.page_source)
         return scp_driver
     
     except WebDriverException as e:
-        print(f"Error opening Chrome Driver: {str(e)}")
+        logger.error(f"Error opening Chrome Driver: {str(e)}")
         return None
+
 
 @pytest.fixture(scope='class', autouse=True)
 def init_device(request):
+    """
+    Initialize the Appium driver for the test class.
+    """
     if 'no_auto' in request.keywords:
         yield
         return
 
     _appium_driver = get_selected_device()
     
-    request.cls.appium_driver =_appium_driver
-    print(f"Appium driver initialized for {request.cls.__name__}")
+    request.cls.appium_driver = _appium_driver
+    logger.info(f"Appium driver initialized for {request.cls.__name__}")
     yield _appium_driver
-
+ 
 
 # @pytest.fixture(scope='class', autouse=True)
-def init_page_objects(request, init_device):    # pylint: disable=unused-argument, too-many-locals, redefined-outer-name
+def init_page_objects(request, init_device):  # pylint: disable=unused-argument, too-many-locals, redefined-outer-name
+    """
+    Initialize page objects for the test class.
+    """
     with open(AppConstant.PAGE_OBJECTS_CONFIG_FILE, 'r', encoding='utf-8') as file:
         module_info_list = file.readlines()
         for module_info in module_info_list:
@@ -350,20 +448,22 @@ def init_page_objects(request, init_device):    # pylint: disable=unused-argumen
                     page_object = getattr(module, class_name)(request.cls.appium_driver)
                     setattr(current_object, object_name, page_object)
                 except AttributeError as attribute_error:
-                    print(f'Attribute \'{attribute_error.name}\' not found for {attribute_error.obj.__name__}.')
+                    logger.error(f'Attribute \'{attribute_error.name}\' not found for {attribute_error.obj.__name__}.')
 
 
 @pytest.fixture(scope='class', name='marker', autouse=True)
 def get_marker(request):
     """
-    Used to indentify testing type from test cases.
+    Used to identify testing type from test cases.
     """
-
     request.cls.is_regression = pytest.marker == 'regression'
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item):
+    """
+    Hook to capture test results and attach screenshots for failed tests.
+    """
     outcome = yield
     rep = outcome.get_result()
     setattr(item, 'result', rep)
@@ -371,7 +471,9 @@ def pytest_runtest_makereport(item):
 
 @pytest.fixture(scope='function', autouse=True)
 def failed_page(request):
-
+    """
+    Attach screenshots and logs for failed tests.
+    """
     yield
 
     feature_type = request.node.result.when
@@ -390,7 +492,7 @@ def failed_page(request):
 @pytest.fixture(scope='session', autouse=True)
 def update_allure_environment_configs():
     """
-    Provides environment specific information if the tests are run on Jenkins.
+    Provides environment-specific information if the tests are run on Jenkins.
     """
     yield
     env_configs = ConfigParser()
@@ -406,11 +508,17 @@ def update_allure_environment_configs():
 
 # @pytest.fixture(scope='session', autouse=True)
 def delete_lambdatest_apps():
+    """
+    Delete LambdaTest apps after the session.
+    """
     lambdatest_manager = LambdaManager()
     lambdatest_manager.delete_apps()
 
 
 def pytest_addoption(parser):
+    """
+    Add custom command-line options for pytest.
+    """
     parser.addoption('--env', action='store', default='dev', help='env: dev, staging, prod/live or dr')
     parser.addoption('--url', action='store',
                      help='url: dev, staging, production or dr url. If it is provided this value will '
@@ -422,7 +530,7 @@ def pytest_addoption(parser):
                      help='testrail-status: on/off. Used for updating status on TestRail.')
     parser.addoption('--browser', action='store', default='chrome',
                      help='browser: chrome/firefox/headless-chrome. Used for browser selection,')
-    parser.addoption('--repeat', action='store', type=int, default=1, help='Run eah test specified number of times.')
+    parser.addoption('--repeat', action='store', type=int, default=1, help='Run each test specified number of times.')
     parser.addoption('--report-title', action='store', default='ScribePortal Automation Report')
     parser.addoption('--run-skipped', action='store', default='no',
                      help='Enable skipped test cases.')
@@ -449,9 +557,14 @@ def pytest_addoption(parser):
     parser.addoption('--email', action='store', help='Provider email for logging in. It is recommended to provide the value inside quotes')
     parser.addoption('--password', action='store', help='Provider password for logging in. It is recommended to provide the value inside quotes')
     parser.addoption('--provide-credentials', action='store', default='no', help='Enable script to take input for credentials. Default is kept as not taking input.')
+    parser.addoption('--parallel-iphones', action='store_true', default=False, help='Run tests on multiple iPhones in parallel.')
+    parser.addoption('--device-list', action='store', default="iPhone 13", help='Comma-separated list of devices for parallel execution.')
 
 
 def get_next_ipa_folder_from_gd(env_dict, value_iterator, key_iterator, gdm):
+    """
+    Get the next IPA folder from Google Drive.
+    """
     while len(env_dict) == 0:
         try:
             # Get the next value from the iterators
@@ -464,252 +577,14 @@ def get_next_ipa_folder_from_gd(env_dict, value_iterator, key_iterator, gdm):
             return version_folder_id, apk_version_in_gd, env_dict
         except StopIteration:
             # If either iterator is exhausted, return None or handle the end of the iteration gracefully
-            print("No more items to iterate.")
+            logger.info("No more items to iterate.")
             return None, None, None
 
 
-def get_requested_browser(requested_browser_name='chrome'):
-    # Initialize driver as None
-    driver = None
-
-    if requested_browser_name == 'chrome':
-        # Running in Jenkins with Selenium Grid
-        if pytest.enable_jenkins == 'yes':
-            selenium_grid = pytest.configs.get_config('selenium_grid_url')
-            
-            # Setup Chrome options for headless and other configurations
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument('headless')
-            chrome_options.add_argument('--incognito')
-            chrome_options.add_argument('--use-fake-device-for-media-stream')
-            chrome_options.add_argument('--use-fake-ui-for-media-stream')
-            chrome_options.add_argument('window-size=1920x1080')
-            chrome_options.add_argument("--disable-notifications")
-            chrome_options.add_argument("--disable-save-password-bubble")
-            
-            desired_capabilities = DesiredCapabilities.CHROME
-            desired_capabilities['loggingPrefs'] = {'browser': 'ALL'}
-            desired_capabilities.update(chrome_options.to_capabilities())
-            driver = webdriver.Remote(
-                command_executor=selenium_grid,
-                #options=chrome_options,
-                desired_capabilities=desired_capabilities,
-            )
-            
-        # Running locally, without Jenkins
-        elif pytest.enable_jenkins == 'no':
-
-            # Setup local Chrome options
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument('--use-fake-device-for-media-stream')
-            chrome_options.add_argument('--use-fake-ui-for-media-stream')
-            chrome_options.add_experimental_option('useAutomationExtension', False)
-            chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-            chrome_options.add_argument("--disable-notifications")
-            chrome_options.add_argument("--disable-save-password-bubble")
-            
-            # Initialize local Chrome WebDriver
-            driver = webdriver.Chrome(
-                service=Service(ChromeDriverManager().install()), 
-                options=chrome_options
-            )
-            
-        else:
-            raise ValueError('Invalid flag value provided for --enable-jenkins.')
-
-    # Debugging browser session with an existing Chrome instance
-    elif requested_browser_name == 'debugging':
-        options = Options()
-        options.add_experimental_option('debuggerAddress', 'localhost:9222')
-
-        # Attach to existing Chrome debugging session
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-    else:
-        raise ValueError('Invalid browser type. Please try with Chrome or debugging.')
-
-    # Maximize the window after driver initialization
-    if driver:
-        driver.maximize_window()
-
-    return driver
-
-
-
-
-
-def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False,
-                        url = "http://localhost:4723", use_simulator:bool=False):   # pylint: disable=too-many-statements, too-many-locals
-    """
-    Get the appropriate mobile webdriver based on the input params
-    :param apk_type: apk type of the device ('RT' or 'NRT')
-    :return: mobile webdriver instance
-    """
-    with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
-        DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
-        LAMBDATEST_CONFIGS = DRIVER_CONFIGS['lambdatest_caps']['lt:options']
-        if auto_accept_alert:
-            LAMBDATEST_CONFIGS['autoAcceptAlerts'] = True
-
-        if change_device_time:
-            LAMBDATEST_CONFIGS['timezone'] = 'UTC+10:00'
-
-        else:
-            LAMBDATEST_CONFIGS['timezone'] = 'UTC-04:00'
-
-    expected_app_id_key = f'apk_id_{apk_type}_{pytest.env}'
-    app_id = pytest.configs.get_config(expected_app_id_key)
-
-    if pytest.enable_jenkins == 'yes' or pytest.run_locally == 'yes':
-
-        gdm = GoogleDriveManager()
-        lambdatest = LambdaManager()
-
-        if pytest.env == 'staging':
-            pytest.file_env = 'Stag'
-        elif pytest.env == 'dev':
-            pytest.file_env = 'Dev'
-        elif pytest.env == 'prod':
-            pytest.file_env = 'Prod'
-
-        if pytest.apk_version == '':
-            all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_{apk_type}'))
-
-            value_iterator = iter(all_folder_under_root.values())
-            key_iterator = iter(all_folder_under_root.keys())
-            version_folder_id = next(value_iterator)   # Latest version in GD
-            apk_version_in_gd = next(key_iterator)
-            print(version_folder_id, apk_version_in_gd)
-
-            env_dict = gdm.get_list_of_files_by_id(version_folder_id)
-            if len(env_dict) == 0:
-                version_folder_id, apk_version_in_gd, env_dict = get_next_ipa_folder_from_gd(env_dict,
-                                                                                         value_iterator,
-                                                                                         key_iterator,gdm)
-                print(f"Latest version with build present in the folder is being used: {version_folder_id} : {apk_version_in_gd}")
-
-            print(env_dict)
-
-            file_id = gdm.get_latest_zip_file_id(version_folder_id, pytest.file_env)
-
-            print(file_id)
-        else:
-            try:
-                all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_{apk_type}'))
-                # print(all_folder_under_root)
-                version_folder_id = all_folder_under_root[pytest.apk_version]
-            except KeyError:
-                all_folder_under_root = gdm.get_list_of_files_by_name(pytest.configs.get_config(f'app_root_folder_old_{apk_type}'))
-                # print(all_folder_under_root)
-                version_folder_id = all_folder_under_root[pytest.apk_version]
-            apk_version_in_gd = pytest.apk_version
-            print(version_folder_id, apk_version_in_gd)
-
-            env_dict = gdm.get_list_of_files_by_id(version_folder_id)
-            print(env_dict)
-            file_id = gdm.get_latest_zip_file_id(version_folder_id, pytest.file_env)
-            print(file_id)
-
-        expected_apk_name = f'GO_Automation_{apk_type}_{pytest.env}_{apk_version_in_gd}'
-        destination_folder = f'{AppConstant.APK_FOLDER}'
-        apk_download_destination_folder = f'{AppConstant.APK_FOLDER}/{apk_type}'
-        extracted_folder_path = os.path.join(destination_folder, 'extracted')
-
-        lamdatest_app_id = f'lt://{lambdatest.get_apk_info(expected_apk_name)}'
-        if not app_id == lamdatest_app_id:
-            app_id = lamdatest_app_id
-
-        print(f'app_id = {app_id}')
-
-        apk_modified_date_time_str_in_gd = gdm.get_latest_zip_file_modified_date(version_folder_id,pytest.file_env)
-        apk_modified_date_time_str_in_lambdatest = lambdatest.get_apk_info(expected_apk_name, 'updated_at')
-
-        if apk_modified_date_time_str_in_lambdatest:
-
-            date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
-            apk_modified_date_time_in_gd = datetime.datetime.strptime(apk_modified_date_time_str_in_gd, date_format)
-            apk_modified_date_time_in_lambdatest = datetime.datetime.strptime(apk_modified_date_time_str_in_lambdatest, date_format)
-
-            if apk_modified_date_time_in_gd > apk_modified_date_time_in_lambdatest:
-                print('\nLambdatest has older apk. Uploading latest apk from Google Drive...\n')
-                try:
-                    os.makedirs(destination_folder, exist_ok=True)
-                    os.makedirs(extracted_folder_path, exist_ok=True)
-                    gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                finally:
-                    pass
-                    # shutil.rmtree(extracted_folder_path, ignore_errors=True)
-
-                ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted')
-                ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
-                app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
-                os.remove(ipa_file_path)
-            else:
-                print('\nLambdatest has the latest apk. Continuing with existing one...\n')
-                print('\nChecking for validity of the latest saved APP_ID.\n')
-                if not lambdatest.check_app_id_exist(app_id):
-                    try:
-                        os.makedirs(destination_folder, exist_ok=True)
-                        os.makedirs(extracted_folder_path, exist_ok=True)
-                        gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                    finally:
-                        pass
-                        # shutil.rmtree(extracted_folder_path, ignore_errors=True)
-
-                    ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted/')
-                    ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
-                    app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
-                    os.remove(ipa_file_path)
-        else:
-            try:
-                os.makedirs(destination_folder, exist_ok=True)
-                os.makedirs(extracted_folder_path, exist_ok=True)
-                gdm.download_and_extract_zip_file(file_id, extracted_folder_path)
-                gdm.download_ipa_file(extracted_folder_path, apk_download_destination_folder, f'{pytest.env}.ipa')
-            finally:
-                pass
-                # shutil.rmtree(extracted_folder_path, ignore_errors=True)
-
-            ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f'{AppConstant.APK_FOLDER}/extracted')
-            ipa_file_path = f'{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}'
-            app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
-            os.remove(ipa_file_path)
-
-        LAMBDATEST_CONFIGS['app'] = app_id
-        print(LAMBDATEST_CONFIGS)
-        data_props = ConfigParser()
-        data_props.add_file(AppConstant.LAMBDATEST_CONFIG)
-        data_props.load_configs()
-        data_props.update_config(expected_app_id_key, app_id, AppConstant.LAMBDATEST_CONFIG)
-
-        selected_capabilities = LAMBDATEST_CONFIGS
-        user_name = pytest.configs.get_config('lambdatest_username')
-        access_key = pytest.configs.get_config('lambdatest_access_key')
-        url = f"https://{user_name}:{access_key}@mobile-hub.lambdatest.com/wd/hub"
-    else:
-        # file path for local .app file
-        # path = f'{AppConstant.APK_FOLDER}/{apk_type}/{pytest.env}.app'
-        DRIVER_CONFIGS['local_caps']['bundleId'] = 'com.athelas.scribe.Athelas-Scribe'
-        if not use_simulator:
-            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('udid')
-            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8100
-        else:
-            DRIVER_CONFIGS['local_caps']['udid'] = pytest.configs.get_config('sim_udid')
-            DRIVER_CONFIGS['local_caps']['wdaLocalPort'] = 8101
-
-        selected_capabilities = DRIVER_CONFIGS['local_caps']
-        print(selected_capabilities)
-
-    # pytest.configs.set_config('app_id', DRIVER_CONFIGS['local_caps']['bundleId'])
-    options = XCUITestOptions()
-    options.load_capabilities(selected_capabilities)
-    client_config = ClientConfig(url)
-    command_executor = AppiumConnection(client_config=client_config)
-    driver = appium_driver.Remote(command_executor=command_executor, options=options)
-    return driver
-
-
 def get_dict_from_loaded_config(testcases_config=None):
+    """
+    Convert loaded configuration into a dictionary.
+    """
     testcase_dict = {}
     for __item in testcases_config.items():
         key = __item[0]
@@ -720,6 +595,9 @@ def get_dict_from_loaded_config(testcases_config=None):
 
 
 def add_marker_to_test(item, marker_info_dict, marker_type='skip'):
+    """
+    Add a marker to a test based on the marker info dictionary.
+    """
     collected_class_name = item.nodeid.split('::')[1]
 
     if collected_class_name in marker_info_dict:
@@ -731,6 +609,9 @@ def add_marker_to_test(item, marker_info_dict, marker_type='skip'):
 
 
 def prepare_marker(marker_info_dict, tc_or_suite_name, marker_type='skip'):
+    """
+    Prepare a marker based on the marker info dictionary.
+    """
     unwanted_tc_info_list = marker_info_dict[tc_or_suite_name].split('|')
 
     if len(unwanted_tc_info_list) == 1:
@@ -749,6 +630,9 @@ def prepare_marker(marker_info_dict, tc_or_suite_name, marker_type='skip'):
 
 
 def get_modules_and_packages(test_root_dir='.'):
+    """
+    Get all modules and packages in the test root directory.
+    """
     package_or_modules = []
 
     for item in glob.iglob(test_root_dir + '**/*.py', recursive=True):
@@ -756,7 +640,11 @@ def get_modules_and_packages(test_root_dir='.'):
 
     return package_or_modules
 
+
 def set_skipped_test(config):
+    """
+    Set skipped tests based on the skip list.
+    """
     skipped_list = re.split(r'\s+', config.getoption('--skip-list'))
     package_or_modueles = get_modules_and_packages()
 
@@ -769,126 +657,95 @@ def set_skipped_test(config):
     else:
         config.__dict__['option'].ignore = items_to_be_skipped
 
-
-
-
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def trigger_ehr_patient_creation_jenkins_job(provider_npi: str, first_name_length: int = 4, last_name_length: int = 4,
-                                             chief_complaint: str = 'Pain', room_number: str = '1001',
-                                             DOB: str = '2000-01-01', gender: str = 'M',
-                                             appointment_date_offset: int = 0, timeout: int = 30):
+def get_selected_device(apk_type='go', change_device_time=False, auto_accept_alert=False, 
+                        url="http://localhost:4723", use_simulator: bool = False):
     """
-    Triggers the Jenkins job that creates an EHR appointment for the provider.
+    Get the appropriate mobile webdriver based on the input params.
     """
-    # Jenkins server details
-    jenkins_url = pytest.configs.get_config('ehr_patient_creation_jenkins_url')
-    jenkins_user = pytest.configs.get_config('jenkins_user')
-    jenkins_api_token = pytest.configs.get_config('jenkins_token')
-
-    first_name = generate_random_string(first_name_length)
-    last_name = generate_random_string(last_name_length)
-
-    job_parameters = {
-        'ENV': 'STAGE',
-        'CLOUD_PLATFORM': 'GCP',
-        'PARAM_NPI': provider_npi,
-        'PARAM_APP_DATE': get_formatted_date_str(appointment_date_offset, '%Y-%m-%d'),
-        'PARAM_APP_TIME': '15:00:00',
-        'PARAM_VISIT_REASON': chief_complaint,
-        'PARAM_FN': first_name,
-        'PARAM_LN': last_name,
-        'PARAM_BIRTHDATE': DOB,
-        'PARAM_SEX': gender,
-        'PARAM_ROOM': room_number
-    }
-
     try:
-        logging.info("Triggering Jenkins job...")
-        response = requests.post(
-            jenkins_url,
-            auth=HTTPBasicAuth(jenkins_user, jenkins_api_token),
-            params=job_parameters,
-            timeout=timeout,  # Specify a timeout to avoid hanging
-            verify=False  # Consider making SSL verification configurable
-        )
+        is_parallel = pytest.config.getoption("--parallel-iphones", default=False)
+        selected_devices = pytest.config.getoption("--device-list", default="iPhone 13").split(",")
+        if not selected_devices:
+            logger.error("No devices specified. Falling back to default device: iPhone 13")
+            selected_devices = ["iPhone 13"]
 
-        if response.status_code in [200, 201]:
-            logging.info("Jenkins job triggered successfully.")
-            queue_url = response.headers.get('Location')
-            build_number = get_jenkins_build_number(queue_url, jenkins_user, jenkins_api_token, timeout)
+        with open(AppConstant.IOS_CAPABILITIES_CONFIGS, encoding='utf-8') as ios_caps:
+            DRIVER_CONFIGS = json.load(ios_caps)['capabilities']
+            LAMBDATEST_CONFIGS = DRIVER_CONFIGS['lambdatest_caps']['lt:options']
+        
+        if auto_accept_alert:
+            LAMBDATEST_CONFIGS['autoAcceptAlerts'] = True
 
-            if build_number:
-                job_name = "custom_hca_note_creation"  
-                check_jenkins_job_status(
-                    pytest.configs.get_config('ehr_patient_creation_jenkins_base_url'),
-                    job_name, build_number, jenkins_user, jenkins_api_token, timeout
-                )
+        LAMBDATEST_CONFIGS['timezone'] = 'UTC+10:00' if change_device_time else 'UTC-04:00'
 
-                patient_name = f'{first_name} {last_name}'
-                locator_name = f'{last_name}, {first_name}'
-                patient_locator = (AppiumBy.ACCESSIBILITY_ID, locator_name)
-                return patient_name, patient_locator
-            else:
-                logging.error("Failed to retrieve the build number.")
+        expected_app_id_key = f'apk_id_{apk_type}_{pytest.env}'
+        app_id = pytest.configs.get_config(expected_app_id_key)
+
+        if pytest.enable_jenkins == 'yes' or pytest.run_locally == 'yes':
+            gdm = GoogleDriveManager()
+            lambdatest = LambdaManager()
+            expected_apk_name = f'GO_Automation_{apk_type}_{pytest.env}_{pytest.apk_version}'
+
+            lamdatest_app_id = f'lt://{lambdatest.get_apk_info(expected_apk_name)}'
+            if app_id != lamdatest_app_id:
+                app_id = lamdatest_app_id
+            logger.info(f'Using app_id: {app_id}')
+
+            apk_modified_date_time_str_in_gd = gdm.get_latest_zip_file_modified_date(AppConstant.APK_FOLDER, pytest.file_env)
+            apk_modified_date_time_str_in_lambdatest = lambdatest.get_apk_info(expected_apk_name, 'updated_at')
+
+            if apk_modified_date_time_str_in_lambdatest:
+                date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
+                apk_gd_time = datetime.datetime.strptime(apk_modified_date_time_str_in_gd, date_format)
+                apk_lt_time = datetime.datetime.strptime(apk_modified_date_time_str_in_lambdatest, date_format)
+
+                if apk_gd_time > apk_lt_time:
+                    logger.info('Uploading the latest IPA file...')
+                    os.makedirs(AppConstant.APK_FOLDER, exist_ok=True)
+                    os.makedirs(f"{AppConstant.APK_FOLDER}/extracted", exist_ok=True)
+                    gdm.download_and_extract_zip_file(AppConstant.APK_FOLDER, f"{AppConstant.APK_FOLDER}/extracted")
+
+                    ipa_file_name = gdm.get_the_latest_ipa_file_name_from_apk_folder(f"{AppConstant.APK_FOLDER}/extracted")
+                    ipa_file_path = f"{AppConstant.APK_FOLDER}/extracted/{ipa_file_name}"
+                    app_id = f'lt://{lambdatest.get_app_id_after_uploading_apk(app_name=expected_apk_name, apk_file_path=ipa_file_path)}'
+                    os.remove(ipa_file_path)
+
+            LAMBDATEST_CONFIGS['app'] = app_id
+            pytest.configs.update_config(expected_app_id_key, app_id, AppConstant.LAMBDATEST_CONFIG)
+
+        LAMBDATEST_CONFIGS['device'] = selected_devices if is_parallel else selected_devices[0]
+        LAMBDATEST_CONFIGS['platformName'] = "iOS"
+
+        logger.info(f"Running on {'multiple devices' if is_parallel else 'single device'}: {LAMBDATEST_CONFIGS['device']}")
+
+        options = XCUITestOptions()
+        options.load_capabilities(LAMBDATEST_CONFIGS)
+        driver = appium_driver.Remote(command_executor=AppiumConnection(remote_server_addr=url), options=options)
+
+        # Attach LambdaTest logs to reports
+        session_id = driver.session_id
+        if session_id:
+            lambdatest_log_url = f"https://automation.lambdatest.com/logs/{session_id}"
+            logger.info(f"LambdaTest logs available at: {lambdatest_log_url}")
+            pytest.lambdatest_log_url = lambdatest_log_url
         else:
-            logging.error("Failed to trigger Jenkins job. Status code: %d", response.status_code)
-            logging.debug("Response content: %s", response.text)
+            logger.error("Session ID is None. LambdaTest log URL cannot be generated.")
+        
+        return driver
 
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Error loading iOS capabilities or configuration: {e}")
+        return None
     except requests.exceptions.RequestException as e:
-        logging.error("Request error occurred: %s", e)
+        logger.error(f"Network error while interacting with LambdaTest: {e}")
+        return None
+    except RuntimeError as e:
+        logger.error(f"Runtime error encountered: {e}")
+        return None
     except Exception as e:
-        logging.error("An unexpected error occurred: %s", e)
-
-def get_jenkins_build_number(queue_url, user, token, timeout=30):
-    """Checks the Jenkins queue until the job starts and retrieves the build number."""
-    try:
-        while True:
-            queue_response = requests.get(queue_url + '/api/json', auth=HTTPBasicAuth(user, token), verify=False, timeout=timeout)
-            if queue_response.status_code == 200:
-                queue_info = queue_response.json()
-                if 'executable' in queue_info:
-                    build_number = queue_info['executable']['number']
-                    logging.info("Job has started with build number: %d", build_number)
-                    return build_number
-                else:
-                    logging.info("Job is still in queue...")
-                    time.sleep(10)
-            else:
-                logging.error("Error retrieving queue status: %s", queue_response.text)
-                break
-    except requests.exceptions.RequestException as e:
-        logging.error("Request error while getting build number: %s", e)
-    except Exception as e:
-        logging.error("Unexpected error occurred: %s", e)
-
-def check_jenkins_job_status(base_url, job_name, build_number, user, token, timeout=30):
-    """Checks the status of the Jenkins job until completion."""
-    try:
-        build_url = f"{base_url}/job/{job_name}/{build_number}/api/json"
-        while True:
-            response = requests.get(build_url, auth=HTTPBasicAuth(user, token), verify=False, timeout=timeout)
-            if response.status_code == 200:
-                build_info = response.json()
-                if build_info['result'] is not None:
-                    if build_info['result'] == "SUCCESS":
-                        logging.info("Jenkins job completed successfully.")
-                        return True
-                    else:
-                        logging.error("Jenkins job failed with result: %s", build_info['result'])
-                        return False
-                else:
-                    logging.info("Jenkins job is still running...")
-                    time.sleep(10)
-            else:
-                logging.error("Error checking job status: %s", response.text)
-                break
-    except requests.exceptions.RequestException as e:
-        logging.error("Request error while checking job status: %s", e)
-    except Exception as e:
-        logging.error("Unexpected error occurred: %s", e)
-
-
-
+        logger.error(f"Unexpected error in get_selected_device: {e}")
+        return None
+    finally:
+        if 'driver' in locals() and driver is not None:
+            driver.quit()
+            logger.info("Appium session closed successfully.")

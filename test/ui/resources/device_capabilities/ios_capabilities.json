@@ -12,6 +12,7 @@
             "newCommandTimeout": 240,
             "wdaLocalPort": "will be assigned"
         },
+<<<<<<< HEAD
         "lambdatest_caps": {
             "lt:options": [
                 {
@@ -90,6 +91,88 @@
                     "language": "en"
                 }
             ]
+=======
+        "lambdatest_caps_iphone_12": {
+            "lt:options": {
+                "app": "will be generated dynamically",
+                "autoGrantPermissions": false,
+                "console": true,
+                "devicelog": true,
+                "idleTimeout": 1800,
+                "build": "AX_Test",
+                "name": "Augmedix GO ED - iPhone 12",
+                "isRealMobile": true,
+                "platformName": "iOS",
+                "deviceName": "iPhone 12",
+                "platformVersion": "14",
+                "queueTimeout": 900,
+                "visual": true,
+                "newCommandTimeout": 240,
+                "w3c": true,
+                "autoAcceptAlerts": false,
+                "network": true,
+                "timezone": "America/Los_Angeles",
+                "lambda:keepAlive": true,
+                "smartWait": true,
+                "disableScreenshots": true,
+                "locale": "en_US",
+                "language": "en"
+            }
+        },
+        "lambdatest_caps_iphone_13": {
+            "lt:options": {
+                "app": "will be generated dynamically",
+                "autoGrantPermissions": false,
+                "console": true,
+                "devicelog": true,
+                "idleTimeout": 1800,
+                "build": "AX_Test",
+                "name": "Augmedix GO ED - iPhone 13",
+                "isRealMobile": true,
+                "platformName": "iOS",
+                "deviceName": "iPhone 13",
+                "platformVersion": "15",
+                "queueTimeout": 900,
+                "visual": true,
+                "newCommandTimeout": 240,
+                "w3c": true,
+                "autoAcceptAlerts": false,
+                "network": true,
+                "timezone": "America/Los_Angeles",
+                "lambda:keepAlive": true,
+                "smartWait": true,
+                "disableScreenshots": true,
+                "locale": "en_US",
+                "language": "en"
+            }
+        },
+        "lambdatest_caps_iphone_14": {
+            "lt:options": {
+                "app": "will be generated dynamically",
+                "autoGrantPermissions": false,
+                "console": true,
+                "devicelog": true,
+                "idleTimeout": 1800,
+                "build": "AX_Test",
+                "name": "Augmedix GO ED - iPhone 14",
+                "isRealMobile": true,
+                "platformName": "iOS",
+                "deviceName": "iPhone 14",
+                "platformVersion": "16",
+                "queueTimeout": 900,
+                "visual": true,
+                "newCommandTimeout": 240,
+                "w3c": true,
+                "autoAcceptAlerts": false,
+                "network": true,
+                "timezone": "America/Los_Angeles",
+                "lambda:keepAlive": true,
+                "smartWait": true,
+                "disableScreenshots": true,
+                "locale": "en_US",
+                "language": "en"
+            }
+>>>>>>> 2fc6fc0f13b341fc49b4371dafcf05d75606e665
         }
     }
 }

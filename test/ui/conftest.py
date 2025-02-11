@@ -34,6 +34,9 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.common.exceptions import WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 # Local Modules
 from test.ui.utils.app_constants import AppConstant
@@ -42,7 +45,7 @@ from test.ui.utils.google_drive_manager import GoogleDriveManager
 from test.ui.utils.lambdatest_manager import LambdaManager
 from appium.webdriver.common.appiumby import AppiumBy
 from test.ui.utils.helper import get_formatted_date_str, generate_random_string
-from selenium.webdriver.remote.remote_connection import ClientConfig
+from selenium.webdriver.common.service import Service
 from appium.webdriver.appium_connection import AppiumConnection
 
 # Configure logging
@@ -242,7 +245,7 @@ def get_requested_browser(requested_browser_name='chrome'):
             if pytest.enable_jenkins == 'yes':
                 selenium_grid = pytest.configs.get_config('selenium_grid_url')
                 chrome_options = setup_chrome_options(headless=True)
-                desired_capabilities = DesiredCapabilities.CHROME
+                desired_capabilities = webdriver.DesiredCapabilities.CHROME
                 desired_capabilities['loggingPrefs'] = {'browser': 'ALL'}
                 desired_capabilities.update(chrome_options.to_capabilities())
                 driver = webdriver.Remote(
@@ -252,27 +255,32 @@ def get_requested_browser(requested_browser_name='chrome'):
             elif pytest.enable_jenkins == 'no':
                 chrome_options = setup_chrome_options()
                 driver = webdriver.Chrome(
-                    service=Service(ChromeDriverManager().install()), 
+                    service=ChromeService(ChromeDriverManager().install()), 
                     options=chrome_options
                 )
             else:
                 raise ValueError('Invalid flag value provided for --enable-jenkins.')
+
         elif requested_browser_name == 'debugging':
             options = ChromeOptions()
             options.add_experimental_option('debuggerAddress', 'localhost:9222')
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            driver = webdriver.Chrome(
+                service=ChromeService(ChromeDriverManager().install()),  
+                options=options
+            )
         else:
             raise ValueError('Invalid browser type. Please try with Chrome or debugging.')
 
         if driver:
             driver.maximize_window()
         return driver
+
     except Exception as e:
         logger.error(f"Error initializing {requested_browser_name} browser: {e}")
         raise
 
 
-# Rest of the code remains unchanged, with comments preserved as per your request.
+
 
 def pytest_collection_modifyitems(config, items):  # pylint: disable=too-many-locals
     """

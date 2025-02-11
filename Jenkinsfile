@@ -220,7 +220,7 @@ properties(
       currentBuild.displayName = "# ${currentBuild.number} run by ${jobUserId.toUpperCase()} on ${repoInformation.GIT_BRANCH.replace('origin/', '').toUpperCase()}"
 
       def _gchat_webhook_link = null
-      def props = readProperties  file: 'resources/jenkins.properties'
+      def props = readProperties  file: 'test/ui/resources/jenkins.properties'
 
       def providedENV = params.ENV
       def providedTestType = params.TESTTYPE

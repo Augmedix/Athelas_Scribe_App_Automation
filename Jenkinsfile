@@ -627,7 +627,7 @@ properties(
                         set +x
                         . ~/.axgo_profile
                         echo "Running tests on ${file} with env=${ENV}"
-                        python3 -m pytest --env=${ENV} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED_TCS} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA ${PARALLEL_DEVICES} ${DEVICE_LIST}
+                        python3 -m pytest --env=${ENV} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED_TCS} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes ${PARALLEL_DEVICES} --device-list=${DEVICE_LIST} --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA 
                         set -x
                     """
                 } else {
@@ -636,7 +636,7 @@ properties(
                             set +x
                             . ~/.axgo_profile
                             echo "Running tests on ${file} with env=staging"
-                            python3 -m pytest --env=staging ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA ${PARALLEL_DEVICES} ${DEVICE_LIST}
+                            python3 -m pytest --env=staging ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes ${PARALLEL_DEVICES} --device-list=${DEVICE_LIST} --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
                             set -x
                         """
                     } else {
@@ -645,7 +645,7 @@ properties(
                                 set +x
                                 . ~/.axgo_profile
                                 echo "Running tests on ${file} with env=${params.ENV.toLowerCase()}"
-                                python3 -m pytest --env=${params.ENV.toLowerCase()} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA ${PARALLEL_DEVICES} ${DEVICE_LIST}
+                                python3 -m pytest --env=${params.ENV.toLowerCase()} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes ${PARALLEL_DEVICES} --device-list=${DEVICE_LIST} --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
                                 set -x
                             """
                         } else {
@@ -653,7 +653,7 @@ properties(
                                 set +x
                                 . ~/.axgo_profile
                                 echo "Running tests on ${file} with env=${params.ENV.toLowerCase()} and url=${params.TEST_URL}"
-                                python3 -m pytest --env=${params.ENV.toLowerCase()} --url=${params.TEST_URL} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA ${PARALLEL_DEVICES} ${DEVICE_LIST}
+                                python3 -m pytest --env=${params.ENV.toLowerCase()} --url=${params.TEST_URL} ${file} -m ${params.TESTTYPE.toLowerCase()} --run-skipped=${EXECUTE_SKIPPED} --check-complaints=${params.CHECK_COMPLAINTS} --junitxml=${WORKSPACE}/testResults/${file}.xml --browser-version=${params.BROWSER_VERSION} --platform-name=${params.PLATFORM_NAME} --enable-jenkins=yes ${PARALLEL_DEVICES} --device-list=${DEVICE_LIST} --default-dataset=${params.DEFAULT_DATASET} --alluredir=${WORKSPACE}/allure-results -rA
                                 set -x
                             """
                         }

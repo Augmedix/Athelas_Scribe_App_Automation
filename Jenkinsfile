@@ -1,9 +1,5 @@
 
-if (params.PARALLEL_DEVICES) {
-    deviceList = "--device-list iphone13,iphone14,iphone15"
-} else {
-    deviceList = "--device-list iphone1"
-}
+
 import hudson.model.Result
 import static groovy.io.FileType.FILES  //isort: skip
 
@@ -68,9 +64,8 @@ properties(
               text(name: 'BROWSER_VERSION', defaultValue: '117'),
 
               choice(name: 'PLATFORM_NAME', choices: ['iOS', 'Android']),
-              text(name: 'DEVICE_NAME', defaultValue: 'iPhone 13'),
-              text(name: 'DEVICE_OS_VERSION', defaultValue: '13'),
-              text(name: 'APK_VERSION', defaultValue: '20221474'),
+              booleanParam(name: 'PARALLEL_DEVICES', defaultValue: false, description: 'Whether to run tests in parallel on multiple devices.'),
+              text(name: 'DEVICE_LIST', defaultValue: '', description: 'Comma-separated list of devices to run tests on (e.g., "iphone13,iphone14,iphone15").'),
 
               [$class: 'CascadeChoiceParameter', choiceType: 'PT_SINGLE_SELECT', description: 'Select the threshold value for SANITY to trigger Regression and Ext Regression.',
               name: 'THRESHOLD',
@@ -419,6 +414,12 @@ properties(
                 publishIssues id: 'analysis', name: 'All Issues',
                     issues: [pylint]
             }
+        }
+
+        if (params.PARALLEL_DEVICES) {
+            deviceList = "--device-list iphone13,iphone14,iphone15"
+        } else {
+            deviceList = "--device-list iphone13"
         }
 
 

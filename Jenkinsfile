@@ -310,7 +310,7 @@ properties(
         def gchat_webhook_link = props['gchat_webhook_link']
         String downstream_job_name = props['downstream_job_name']
 
-        def summary = junit testResults: 'testResults/**/*.xml'
+        def summary = junit testResults: 'test/ui/testResults/**/*.xml'
         int totalFailed = summary.failCount
         int totalSkipped = summary.skipCount
         int totalCount = summary.totalCount

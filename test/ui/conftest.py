@@ -671,7 +671,7 @@ def get_selected_device(apk_type='go', change_device_time=False, auto_accept_ale
     Get the appropriate mobile webdriver based on the input params.
     """
     try:
-        is_parallel = pytest.config.getoption("--parallel-iphones", default=False)
+        is_parallel = pytest.config.getoption("--parallel-devices", default=False)
         selected_devices = pytest.config.getoption("--device-list", default="iPhone 13").split(",")
         if not selected_devices:
             logger.error("No devices specified. Falling back to default device: iPhone 13")

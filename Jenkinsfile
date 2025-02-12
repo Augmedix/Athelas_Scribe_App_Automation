@@ -1,5 +1,3 @@
-
-
 import hudson.model.Result
 import static groovy.io.FileType.FILES  //isort: skip
 
@@ -65,7 +63,7 @@ properties(
 
               choice(name: 'PLATFORM_NAME', choices: ['iOS', 'Android']),
               booleanParam(name: 'PARALLEL_DEVICES', defaultValue: false, description: 'Whether to run tests in parallel on multiple devices.'),
-              text(name: 'DEVICE_LIST', defaultValue: '', description: 'Comma-separated list of devices to run tests on (e.g., "iphone13,iphone14,iphone15").'),
+              text(name: 'DEVICE_LIST', defaultValue: 'iPhone 12,iPhone 13,iPhone 14', description: 'Comma-separated list of devices to run tests on (e.g., "iPhone 12,iPhone 13,iPhone 14").'),
 
               [$class: 'CascadeChoiceParameter', choiceType: 'PT_SINGLE_SELECT', description: 'Select the threshold value for SANITY to trigger Regression and Ext Regression.',
               name: 'THRESHOLD',
@@ -415,13 +413,6 @@ properties(
                     issues: [pylint]
             }
         }
-
-        if (params.PARALLEL_DEVICES) {
-            deviceList = "--device-list iphone13,iphone14,iphone15"
-        } else {
-            deviceList = "--device-list iphone13"
-        }
-
 
         if((percentPassed >= sanity_benchmark && params.TESTTYPE == "SANITY"  &&  (jobUserId == "SCHEDULER" || jobUserId == "remoteRequest")) || (params.RUN_REGRESSION_AFTER_SANITY == true && params.SELECT_ALL == 'select_all')){
           stage("Regression Triggering"){
